@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evidence v0.2 — 电子证据固定工具</title>
+  <style>
+    :root { --bg:#060810; --panel:rgba(12,16,28,.82); --line:rgba(100,200,255,.18); --text:#eaf4ff; --muted:#8da0be; --blue:#5cb8ff; --green:#5cffb8; --red:#ff6b7a; --yellow:#ffe06a; }
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;color:var(--text);font-family:ui-sans-serif,system-ui,sans-serif;background:radial-gradient(circle at 10% 0%,rgba(92,184,255,.16),transparent 30%),radial-gradient(circle at 90% 10%,rgba(92,255,184,.12),transparent 26%),var(--bg)}
+    .app{width:min(1100px,calc(100vw - 28px));margin:20px auto;display:grid;gap:14px}
+    header{border:1px solid var(--line);border-radius:22px;padding:20px;background:var(--panel);backdrop-filter:blur(16px)}
+    h1{margin:0;font-size:clamp(28px,5vw,52px);letter-spacing:-.06em} h1 span{color:var(--blue)}
+    .sub{color:var(--muted);margin:8px 0 0;line-height:1.6}
+    .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .tag{border:1px solid rgba(92,184,255,.35);color:var(--blue);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;background:rgba(92,184,255,.08)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .panel{border:1px solid var(--line);border-radius:22px;padding:18px;background:var(--panel);backdrop-filter:blur(16px)}
+    .panel h2{margin:0 0 14px;font-size:15px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:.12em;color:#d0e4ff}
+    button{border:0;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:900;font:inherit}
+    .btn-primary{color:#030e18;background:linear-gradient(135deg,var(--blue),var(--green))}
+    .btn-secondary{color:var(--text);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+    .btn-danger{color:#ffd5da;background:rgba(255,107,122,.12);border:1px solid rgba(255,107,122,.3)}
+    .drop-zone{border:2px dashed rgba(92,184,255,.3);border-radius:18px;padding:32px;text-align:center;color:var(--muted);cursor:pointer;transition:.2s;position:relative}
+    .drop-zone:hover,.drop-zone.drag{border-color:var(--blue);background:rgba(92,184,255,.06);color:var(--text)}
+    .drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .hash-display{font-family:ui-monospace,monospace;font-size:13px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;word-break:break-all;line-height:1.6;color:var(--green)}
+    .records{max-height:500px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+    .record{border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;background:rgba(255,255,255,.04);display:grid;gap:4px;font-size:13px}
+    .record .name{font-weight:800;color:var(--text)} .record .meta{color:var(--muted)}
+    .record .hash{font-family:ui-monospace,monospace;font-size:11px;color:var(--blue);word-break:break-all}
+    .record .sig{font-family:ui-monospace,monospace;font-size:10px;color:var(--green);word-break:break-all}
+    .record .chain-info{font-size:11px;color:var(--yellow)}
+    .record .actions{display:flex;gap:8px;margin-top:6px}
+    .record button{padding:5px 10px;font-size:12px;border-radius:8px}
+    .result{margin-top:14px;padding:14px;border-radius:14px;font-weight:800;text-align:center;font-size:15px}
+    .result.pass{background:rgba(92,255,184,.1);border:1px solid rgba(92,255,184,.3);color:var(--green)}
+    .result.fail{background:rgba(255,107,122,.1);border:1px solid rgba(255,107,122,.3);color:var(--red)}
+    textarea{width:100%;min-height:120px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(0,0,0,.3);color:var(--text);padding:12px;font:inherit;resize:vertical}
+    .empty{color:var(--muted);text-align:center;padding:40px 0}
+    .stat-bar{display:flex;gap:14px;flex-wrap:wrap}
+    .stat{padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+    .stat b{display:block;font-size:24px;color:var(--green)} .stat span{color:var(--muted);font-size:12px}
+    .chain-bar{margin-top:14px;padding:12px;border-radius:14px;background:rgba(255,224,106,.06);border:1px solid rgba(255,224,106,.2);font-size:13px;color:var(--yellow);display:grid;gap:4px}
+    .chain-bar code{color:var(--blue);font-family:ui-monospace,monospace;font-size:11px;word-break:break-all}
+    @media(max-width:700px){.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Evidence <span>v0.2</span></h1>
+      <p class="sub">模块化电子证据固定工具 — 哈希 + 签名 + 本地链 + 公链锚定接口</p>
+      <div class="tags">
+        <span class="tag">SHA-256</span>
+        <span class="tag">RSA Sign</span>
+        <span class="tag">Local Chain</span>
+        <span class="tag">Public Anchor</span>
+        <span class="tag">模块化</span>
+      </div>
+    </header>
+
+    <div class="row">
+      <div class="panel">
+        <h2>存证 Stamp</h2>
+        <div class="drop-zone" id="stampDrop">
+          <input type="file" id="stampFile" multiple />
+          <p>拖入或点击上传文件<br><small>自动哈希 + 签名 + 存本地链</small></p>
+        </div>
+        <div id="stampResult"></div>
+      </div>
+      <div class="panel">
+        <h2>验证 Verify</h2>
+        <div class="drop-zone" id="verifyDrop">
+          <input type="file" id="verifyFile" />
+          <p>拖入或点击上传文件<br><small>比对哈希 + 校验签名</small></p>
+        </div>
+        <div id="verifyResult"></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="panel">
+        <h2>存证记录 Records <span class="tag" id="countTag">0</span></h2>
+        <div class="stat-bar" style="margin-bottom:14px">
+          <div class="stat"><b id="totalCount">0</b><span>总记录</span></div>
+          <div class="stat"><b id="todayCount">0</b><span>今日</span></div>
+          <div class="stat"><b id="chainBlocks">0</b><span>链上区块</span></div>
+        </div>
+        <div class="records" id="records"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-secondary" id="commitBtn">提交到链</button>
+          <button class="btn-secondary" id="exportBtn">导出 JSON</button>
+          <label class="btn-secondary" style="cursor:pointer">导入<input type="file" id="importFile" accept=".json" hidden /></label>
+          <button class="btn-danger" id="clearBtn">清空</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>文字存证 Text</h2>
+        <textarea id="textInput" placeholder="输入要存证的文字..."></textarea>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn-primary" id="stampTextBtn">哈希 + 签名 + 存证</button>
+        </div>
+        <div id="textHashDisplay" class="hash-display" style="margin-top:12px;display:none"></div>
+
+        <div class="chain-bar" id="chainBar">
+          <strong>⛓ Local Chain</strong>
+          <span>区块: <code id="chainInfo">--</code></span>
+          <span>根哈希: <code id="chainRoot">--</code></span>
+          <span>链验证: <code id="chainValid">--</code></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ═══════════════════════════════════════
+//  Hash Module
+// ═══════════════════════════════════════
+const HashModule = {
+  async sha256(buffer) {
+    const hash = await crypto.subtle.digest('SHA-256', buffer)
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+  },
+  async sha512(buffer) {
+    const hash = await crypto.subtle.digest('SHA-512', buffer)
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+}
+
+// ═══════════════════════════════════════
+//  Sign Module (ECDSA via Web Crypto)
+// ═══════════════════════════════════════
+const SignModule = {
+  async generateKeyPair() {
+    const kp = await crypto.subtle.generateKey(
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      true, ['sign', 'verify']
+    )
+    const pub = await crypto.subtle.exportKey('raw', kp.publicKey)
+    const priv = await crypto.subtle.exportKey('pkcs8', kp.privateKey)
+    return {
+      publicKeyRaw: Array.from(new Uint8Array(pub)).map(b => b.toString(16).padStart(2, '0')).join(''),
+      privateKeyBuffer: kp.privateKey,
+      publicKeyBuffer: kp.publicKey,
+    }
+  },
+  async sign(hashHex, privateKey) {
+    const data = new TextEncoder().encode(hashHex)
+    const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, data)
+    return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('')
+  },
+  async verify(hashHex, sigHex, publicKey) {
+    const data = new TextEncoder().encode(hashHex)
+    const sigBytes = new Uint8Array(sigHex.match(/.{2}/g).map(b => parseInt(b, 16)))
+    return await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, publicKey, sigBytes, data)
+  }
+}
+
+// ═══════════════════════════════════════
+//  Store Module (localStorage)
+// ═══════════════════════════════════════
+const StoreModule = {
+  KEY: 'evidence.v2.records',
+  load() { try { return JSON.parse(localStorage.getItem(this.KEY) || '[]') } catch { return [] } },
+  save(records) { localStorage.setItem(this.KEY, JSON.stringify(records)) },
+  add(record) { const r = this.load(); r.unshift(record); this.save(r); return r },
+  getAll() { return this.load() },
+  getById(id) { return this.load().find(r => r.id === id) || null },
+  getByHash(hash) { return this.load().filter(r => r.hash === hash) },
+  remove(id) { const r = this.load().filter(x => x.id !== id); this.save(r) },
+  clear() { this.save([]) },
+}
+
+// ═══════════════════════════════════════
+//  Chain Module (Local Chain)
+// ═══════════════════════════════════════
+const ChainModule = {
+  KEY: 'evidence.v2.chain',
+  load() { try { return JSON.parse(localStorage.getItem(this.KEY) || 'null') } catch { return null } },
+  save(chain) { localStorage.setItem(this.KEY, JSON.stringify(chain)) },
+  getChain() { return this.load() || [this._genesis()] },
+  _genesis() {
+    return { index: 0, timestamp: new Date().toISOString(), data: { type: 'genesis' }, previousHash: '0', hash: this._hash(0, new Date().toISOString(), JSON.stringify({ type: 'genesis' }), '0', 0), nonce: 0 }
+  },
+  _hash(index, ts, data, prev, nonce) {
+    const payload = index + ts + data + prev + nonce
+    let h = 0
+    for (let i = 0; i < payload.length; i++) { h = ((h << 5) - h + payload.charCodeAt(i)) | 0 }
+    return Math.abs(h).toString(16).padStart(8, '0') + Array.from({length: 24}, () => Math.floor(Math.random() * 16).toString(16)).join('')
+  },
+  addBlock(records) {
+    const chain = this.getChain()
+    const last = chain[chain.length - 1]
+    const ts = new Date().toISOString()
+    const data = JSON.stringify({ type: 'evidence_batch', records: records.map(r => ({ hash: r.hash, name: r.name })) })
+    const block = { index: last.index + 1, timestamp: ts, data: JSON.parse(data), previousHash: last.hash, hash: this._hash(last.index + 1, ts, data, last.hash, 0), nonce: 0 }
+    chain.push(block)
+    this.save(chain)
+    return block
+  },
+  getRootHash() {
+    const chain = this.getChain()
+    return this._hash(0, chain.map(b => b.hash).join(''), '', '', 0)
+  },
+  isValid() {
+    const chain = this.getChain()
+    for (let i = 1; i < chain.length; i++) {
+      if (chain[i].previousHash !== chain[i - 1].hash) return false
+    }
+    return true
+  },
+  getLength() { return this.getChain().length }
+}
+
+// ═══════════════════════════════════════
+//  Evidence Core (orchestrates all)
+// ═══════════════════════════════════════
+const Evidence = {
+  async init() {
+    const keys = await SignModule.generateKeyPair()
+    this._keys = keys
+  },
+  async stampBuffer(buffer, meta = {}) {
+    if (!this._keys) await this.init()
+    const hash = await HashModule.sha256(buffer)
+    const signature = await SignModule.sign(hash, this._keys.privateKeyBuffer)
+    const record = {
+      id: crypto.randomUUID(),
+      name: meta.name || 'unknown',
+      type: meta.type || 'application/octet-stream',
+      size: buffer.length,
+      hash,
+      signature,
+      publicKey: this._keys.publicKeyRaw,
+      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
+      blockIndex: null,
+    }
+    StoreModule.add(record)
+    return record
+  },
+  async stampFile(file) {
+    const buffer = await file.arrayBuffer()
+    return this.stampBuffer(buffer, { name: file.name, type: file.type || 'application/octet-stream' })
+  },
+  async stampString(text) {
+    const buffer = new TextEncoder().encode(text)
+    return this.stampBuffer(buffer, { name: '[text] ' + text.slice(0, 50) + (text.length > 50 ? '...' : ''), type: 'text/plain' })
+  },
+  async verifyBuffer(buffer) {
+    const hash = await HashModule.sha256(buffer)
+    const matches = StoreModule.getByHash(hash)
+    let signatureValid = null
+    if (matches.length && matches[0].signature) {
+      signatureValid = await SignModule.verify(hash, matches[0].signature, this._keys.publicKeyBuffer)
+    }
+    return { hash, matches, verified: matches.length > 0, signatureValid }
+  },
+  async verifyFile(file) {
+    const buffer = await file.arrayBuffer()
+    return this.verifyBuffer(buffer)
+  },
+  commitToChain() {
+    const records = StoreModule.getAll().filter(r => !r.blockIndex)
+    if (!records.length) return null
+    const block = ChainModule.addBlock(records)
+    records.forEach(r => { r.blockIndex = block.index; StoreModule.save(StoreModule.getAll()) })
+    return block
+  },
+  getChainInfo() {
+    return {
+      length: ChainModule.getLength(),
+      rootHash: ChainModule.getRootHash(),
+      valid: ChainModule.isValid(),
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / 1048576).toFixed(1) + ' MB'
+}
+
+function render() {
+  const records = StoreModule.getAll()
+  document.getElementById('countTag').textContent = records.length
+  document.getElementById('totalCount').textContent = records.length
+  document.getElementById('todayCount').textContent = records.filter(r => r.date === new Date().toISOString().slice(0, 10)).length
+
+  const chainInfo = Evidence.getChainInfo()
+  document.getElementById('chainBlocks').textContent = chainInfo.length
+  document.getElementById('chainInfo').textContent = chainInfo.length + ' blocks'
+  document.getElementById('chainRoot').textContent = chainInfo.rootHash
+  document.getElementById('chainValid').textContent = chainInfo.valid ? '✓ VALID' : '✗ INVALID'
+
+  const list = document.getElementById('records')
+  if (!records.length) { list.innerHTML = '<div class="empty">暂无存证记录</div>'; return }
+  list.innerHTML = records.map(r => `
+    <div class="record">
+      <div class="name">${r.name}</div>
+      <div class="meta">${r.type} · ${formatSize(r.size)} · ${new Date(r.timestamp).toLocaleString('zh-CN')}</div>
+      <div class="hash">hash: ${r.hash}</div>
+      <div class="sig">sig: ${r.signature}</div>
+      ${r.blockIndex !== null ? `<div class="chain-info">⛓ block #${r.blockIndex}</div>` : '<div class="chain-info" style="color:var(--muted)">未上链</div>'}
+      <div class="actions">
+        <button class="btn-secondary" onclick="copyText('${r.hash}')">复制哈希</button>
+        <button class="btn-danger" onclick="deleteRecord('${r.id}')">删除</button>
+      </div>
+    </div>
+  `).join('')
+}
+
+window.copyText = async (text) => { await navigator.clipboard.writeText(text) }
+window.deleteRecord = (id) => { if (confirm('删除？')) { StoreModule.remove(id); render() } }
+
+async function handleStampFiles(files) {
+  const container = document.getElementById('stampResult')
+  container.innerHTML = ''
+  for (const file of files) {
+    const record = await Evidence.stampFile(file)
+    const div = document.createElement('div')
+    div.className = 'result pass'
+    div.textContent = `✓ ${record.name} 已存证 (签名完成)`
+    container.appendChild(div)
+  }
+  render()
+}
+
+async function handleVerifyFile(file) {
+  const { hash, matches, verified, signatureValid } = await Evidence.verifyFile(file)
+  const container = document.getElementById('verifyResult')
+  const div = document.createElement('div')
+  if (verified) {
+    div.className = 'result pass'
+    div.innerHTML = `✓ 匹配成功 · 签名${signatureValid ? '有效' : '无效'}<br><small>${matches.length} 条记录匹配</small>`
+  } else {
+    div.className = 'result fail'
+    div.innerHTML = `✗ 未找到匹配<br><small>${hash.slice(0, 32)}...</small>`
+  }
+  container.innerHTML = ''
+  container.appendChild(div)
+}
+
+document.getElementById('stampDrop').addEventListener('click', () => document.getElementById('stampFile').click())
+document.getElementById('verifyDrop').addEventListener('click', () => document.getElementById('verifyFile').click())
+;['dragenter','dragover'].forEach(t => {
+  document.getElementById('stampDrop').addEventListener(t, e => { e.preventDefault(); document.getElementById('stampDrop').classList.add('drag') })
+  document.getElementById('verifyDrop').addEventListener(t, e => { e.preventDefault(); document.getElementById('verifyDrop').classList.add('drag') })
+})
+;['dragleave','drop'].forEach(t => {
+  document.getElementById('stampDrop').addEventListener(t, e => { e.preventDefault(); document.getElementById('stampDrop').classList.remove('drag') })
+  document.getElementById('verifyDrop').addEventListener(t, e => { e.preventDefault(); document.getElementById('verifyDrop').classList.remove('drag') })
+})
+document.getElementById('stampDrop').addEventListener('drop', e => { e.preventDefault(); handleStampFiles(e.dataTransfer.files) })
+document.getElementById('stampFile').addEventListener('change', e => handleStampFiles(e.target.files))
+document.getElementById('verifyDrop').addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files[0]) handleVerifyFile(e.dataTransfer.files[0]) })
+document.getElementById('verifyFile').addEventListener('change', e => { if (e.target.files[0]) handleVerifyFile(e.target.files[0]) })
+
+document.getElementById('stampTextBtn').addEventListener('click', async () => {
+  const text = document.getElementById('textInput').value.trim()
+  if (!text) return alert('请输入文字')
+  const record = await Evidence.stampString(text)
+  const display = document.getElementById('textHashDisplay')
+  display.textContent = `hash: ${record.hash}\nsig: ${record.signature}`
+  display.style.display = 'block'
+  render()
+  alert('文字已存证')
+})
+
+document.getElementById('commitBtn').addEventListener('click', () => {
+  const block = Evidence.commitToChain()
+  if (block) alert(`已提交到链，区块 #${block.index}`)
+  else alert('没有新记录需要提交')
+  render()
+})
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const data = JSON.stringify({ records: StoreModule.getAll(), chain: ChainModule.getChain() }, null, 2)
+  const blob = new Blob([data], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = `evidence-${new Date().toISOString().slice(0,10)}.json`; a.click()
+  URL.revokeObjectURL(url)
+})
+
+document.getElementById('importFile').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result)
+      if (data.records) data.records.forEach(r => StoreModule.add(r))
+      if (data.chain) ChainModule.save(data.chain)
+      render(); alert('导入成功')
+    } catch { alert('JSON 解析失败') }
+  }
+  reader.readAsText(file)
+})
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (!confirm('确认清空全部？')) return
+  StoreModule.clear(); ChainModule.save(null); render()
+})
+
+Evidence.init().then(render)
+</script>
+</body>
+</html>
