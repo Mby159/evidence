@@ -1,5 +1,6 @@
 const crypto = require('crypto')
 const fs = require('fs')
+const path = require('path')
 
 let passed = 0
 let failed = 0
@@ -54,12 +55,12 @@ assert('Different Chinese text → different hash', chineseHash !== crypto.creat
 
 // Test 7: HTML file structure
 console.log('\n[HTML Structure]')
-const html = fs.readFileSync('D:/linyiyi-workspace/evidence/mvp/index.html', 'utf8')
+const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8')
 assert('Contains SHA-256 reference', html.includes('SHA-256'))
 assert('Contains crypto.subtle.digest', html.includes('crypto.subtle'))
 assert('Contains stamp function', html.includes('stampFile'))
 assert('Contains verify function', html.includes('verifyFile'))
-assert('Contains localStorage persistence', html.includes('evidence.records'))
+assert('Contains localStorage persistence', html.includes('localStorage') && html.includes('evidence.v2.records'))
 assert('Contains export function', html.includes('exportBtn'))
 assert('Contains import function', html.includes('importFile'))
 assert('Contains drag-and-drop', html.includes('dragenter'))
