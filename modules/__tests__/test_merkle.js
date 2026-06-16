@@ -100,7 +100,7 @@ async function run() {
   const r1 = await ev.stampFile(path.join(testDir, 'doc.txt'))
   const r2 = await ev.stampString('second evidence')
 
-  const committed = ev.commitToChain()
+  const committed = await ev.commitToChain()
   assert('commitToChain with merkle', committed.merkleRoot.length === 64)
 
   const found = ev.chain.findRecord(r1.hash)
