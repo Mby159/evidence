@@ -3,6 +3,12 @@ const path = require('path')
 const fs = require('fs')
 const { Evidence } = require('./evidence')
 const { IPFSStore, PinataIPFS, Web3StorageIPFS } = require('./store')
+const {
+  buildProofBundle,
+  verifyProofBundle,
+  leafHashOf,
+  stableStringify,
+} = require('./proof-bundle')
 
 const args = process.argv.slice(2)
 const command = args[0]
@@ -23,6 +29,10 @@ Usage:
   evidence import <file>         导入 JSON
   evidence clear                 清空所有记录
   evidence info <file>           查看文件元数据
+
+Proof bundle (cold path: AILog + LocalChain -> Evidence):
+  evidence bundle <artifact.json> --anchor <anchor.json> --proof <proof.json> [--out <bundle.json>] [--subject <json>]
+  evidence verify-bundle <bundle.json> [--expected-root <root>]
 
 IPFS:
   evidence ipfs config           查看/设置 IPFS 配置
@@ -244,9 +254,72 @@ async function main() {
     }
 
     default:
+      // Proof bundle commands handled below.
+      if (command === 'bundle' || command === 'verify-bundle') {
+        await handleBundleCommand(command, args)
+        break
+      }
       console.error(`Unknown command: ${command}`)
       usage()
       process.exit(1)
+  }
+}
+
+function parseFlags(args) {
+  const flags = {}
+  const positional = []
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (a.startsWith('--')) {
+      const key = a.slice(2)
+      const val = args[i + 1] && !args[i + 1].startsWith('--') ? args[++i] : true
+      flags[key] = val
+    } else {
+      positional.push(a)
+    }
+  }
+  return { flags, positional }
+}
+
+async function handleBundleCommand(command, args) {
+  const { flags, positional } = parseFlags(args.slice(1))
+  if (command === 'bundle') {
+    const artifactPath = positional[0]
+    if (!artifactPath) {
+      console.error('Usage: evidence bundle <artifact.json> --anchor <anchor.json> --proof <proof.json> [--out <bundle.json>] [--subject <json>]')
+      process.exit(1)
+    }
+    const artifact = JSON.parse(fs.readFileSync(path.resolve(artifactPath), 'utf-8'))
+    if (!flags.anchor) { console.error('--anchor required'); process.exit(1) }
+    if (!flags.proof) { console.error('--proof required'); process.exit(1) }
+    const anchor = JSON.parse(fs.readFileSync(path.resolve(flags.anchor), 'utf-8'))
+    const merkleProof = JSON.parse(fs.readFileSync(path.resolve(flags.proof), 'utf-8'))
+    const subject = flags.subject ? JSON.parse(flags.subject) : null
+    const keyDir = flags.keyDir || path.join(process.cwd(), '.evidence', 'keys')
+    const bundle = buildProofBundle({ artifact, anchor, merkleProof, subject, keyDir })
+    const outPath = flags.out
+    const text = JSON.stringify(bundle, null, 2)
+    if (outPath) {
+      fs.writeFileSync(path.resolve(outPath), text)
+      console.log(`✓ Bundle written to ${outPath}`)
+    } else {
+      console.log(text)
+    }
+    return
+  }
+  if (command === 'verify-bundle') {
+    const bundlePath = positional[0]
+    if (!bundlePath) {
+      console.error('Usage: evidence verify-bundle <bundle.json> [--expected-root <root>]')
+      process.exit(1)
+    }
+    const bundle = JSON.parse(fs.readFileSync(path.resolve(bundlePath), 'utf-8'))
+    const opts = {}
+    if (flags['expected-root']) opts.expectedRoot = flags['expected-root']
+    const result = verifyProofBundle(bundle, opts)
+    console.log(JSON.stringify(result, null, 2))
+    if (!result.ok) process.exit(1)
+    return
   }
 }
 
