@@ -15,10 +15,29 @@ jobs:
       matrix:
         node-version: [20, 22]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout evidence
+        uses: actions/checkout@v4
+        with:
+          path: evidence
+
+      - name: Checkout local-chain (sibling, for proof-bundle integration)
+        uses: actions/checkout@v4
+        with:
+          repository: Mby159/local-chain
+          path: local-chain
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-      - run: npm ci --ignore-scripts
-      - run: npm test
+          cache-dependency-path: evidence/package-lock.json
+
+      - name: Install
+        working-directory: evidence
+        run: npm ci --ignore-scripts
+
+      - name: Test (with sibling local-chain for proof-bundle integration)
+        working-directory: evidence
+        env:
+          LOCAL_CHAIN_REPO: ${{ github.workspace }}/local-chain
+        run: npm test
