@@ -295,9 +295,14 @@ async function handleBundleCommand(command, args) {
     const anchor = JSON.parse(fs.readFileSync(path.resolve(flags.anchor), 'utf-8'))
     const merkleProof = JSON.parse(fs.readFileSync(path.resolve(flags.proof), 'utf-8'))
     const subject = flags.subject ? JSON.parse(flags.subject) : null
-    const keyDir = flags.keyDir || path.join(process.cwd(), '.evidence', 'keys')
-    const bundle = buildProofBundle({ artifact, anchor, merkleProof, subject, keyDir })
     const outPath = flags.out
+    const keyDir = flags.keyDir
+      ? path.resolve(flags.keyDir)
+      : outPath
+        ? path.join(path.dirname(path.resolve(outPath)), '.evidence', 'keys')
+        : path.join(process.cwd(), '.evidence', 'keys')
+    console.error(`Using keyDir: ${keyDir}`)
+    const bundle = buildProofBundle({ artifact, anchor, merkleProof, subject, keyDir })
     const text = JSON.stringify(bundle, null, 2)
     if (outPath) {
       fs.writeFileSync(path.resolve(outPath), text)

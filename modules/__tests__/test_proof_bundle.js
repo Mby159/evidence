@@ -11,7 +11,7 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const http = require('http')
-const { spawn } = require('child_process')
+const { spawn, spawnSync } = require('child_process')
 const net = require('net')
 
 const {
@@ -218,6 +218,46 @@ function testBuildRejectsHashMismatch() {
   }
 }
 
+function testCliBundleUsesOutDirKeyDirByDefault() {
+  section('CLI bundle keyDir default')
+  const records = [{ id: 'cli-keydir', value: 'ok' }]
+  const tree = buildHandRolledMerkle(records)
+  const proof = tree.proof(0)
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'evidence-cli-bundle-'))
+  try {
+    const artifactPath = path.join(tmp, 'artifact.json')
+    const anchorPath = path.join(tmp, 'anchor.json')
+    const proofPath = path.join(tmp, 'proof.json')
+    const bundlePath = path.join(tmp, 'bundle.json')
+    fs.writeFileSync(artifactPath, JSON.stringify(records[0]))
+    fs.writeFileSync(anchorPath, JSON.stringify({ block_index: 1, leaf_index: 0 }))
+    fs.writeFileSync(proofPath, JSON.stringify({ proof, merkleRoot: tree.root }))
+
+    const cli = path.resolve(__dirname, '..', 'cli.js')
+    const res = spawnSync(process.execPath, [
+      cli, 'bundle', artifactPath,
+      '--anchor', anchorPath,
+      '--proof', proofPath,
+      '--out', bundlePath,
+    ], { encoding: 'utf-8', cwd: os.homedir() })
+
+    assert('bundle command exits 0', res.status === 0, res.stderr || res.stdout)
+    assert('keyDir is printed to stderr', res.stderr.includes('Using keyDir:'))
+    assert('keyDir defaults under output directory',
+      res.stderr.includes(path.join(tmp, '.evidence', 'keys')),
+      res.stderr)
+    assert('bundle file written', fs.existsSync(bundlePath))
+    assert('private key created beside output, not cwd',
+      fs.existsSync(path.join(tmp, '.evidence', 'keys', 'private.pem')))
+
+    const bundle = JSON.parse(fs.readFileSync(bundlePath, 'utf-8'))
+    const v = verifyProofBundle(bundle)
+    assert('CLI-created bundle verifies', v.ok === true, JSON.stringify(v.errors))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+}
+
 function testBuildRejectsBadProof() {
   section('build rejects mismatched merkle proof')
   const records = [{ id: 'a' }, { id: 'b' }]
@@ -381,6 +421,7 @@ async function main() {
   testTamperedArtifactDetected()
   testTamperedSignatureDetected()
   testBuildRejectsHashMismatch()
+  testCliBundleUsesOutDirKeyDirByDefault()
   testBuildRejectsBadProof()
   await runRealServerIntegration()
 
