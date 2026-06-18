@@ -102,8 +102,11 @@ node modules/cli.js bundle artifact.json \
   --out    bundle.json
 ```
 
-Key material lives in `.evidence/keys/{private,public}.pem` by default and is
-lazily generated on first use. You can override with `--keyDir`.
+Key material is lazily generated on first use. For `bundle`, the default is
+`<directory-of---out>/.evidence/keys/{private,public}.pem` when `--out` is
+provided; otherwise it falls back to the current working directory's
+`.evidence/keys`. The CLI prints `Using keyDir: ...` to stderr so accidental
+identity material is visible. You can override with `--keyDir`.
 
 ### Verify a bundle (offline)
 
