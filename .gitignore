@@ -6,3 +6,6 @@ __tmp__/
 __tmp_*/
 .evidence/
 .DS_Store
+
+# Example generated output
+examples/*/out/

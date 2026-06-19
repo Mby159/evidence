@@ -26,6 +26,16 @@ jobs:
           repository: Mby159/local-chain
           path: local-chain
 
+      - name: Checkout ailog (sibling, for example kit)
+        uses: actions/checkout@v4
+        with:
+          repository: Mby159/ailog
+          path: ailog
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
@@ -41,3 +51,10 @@ jobs:
         env:
           LOCAL_CHAIN_REPO: ${{ github.workspace }}/local-chain
         run: npm test
+
+      - name: Example kit smoke (AILog -> LocalChain -> Evidence)
+        working-directory: evidence
+        env:
+          AILOG_REPO: ${{ github.workspace }}/ailog
+          LOCAL_CHAIN_REPO: ${{ github.workspace }}/local-chain
+        run: npm run test:example

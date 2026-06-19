@@ -14,6 +14,7 @@
     "test:metadata": "node modules/__tests__/test_metadata.js",
     "test:integration": "node modules/__tests__/test_integration.js",
     "test:bundle": "node modules/__tests__/test_proof_bundle.js",
+    "test:example": "examples/ailog-localchain-evidence/run.sh",
     "test:mvp": "node mvp/test.js"
   }
 }
