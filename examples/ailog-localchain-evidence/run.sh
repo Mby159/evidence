@@ -115,28 +115,21 @@ PYTHONPATH="$AILOG_REPO" python -m ailog.cli anchor "$OUT_DIR/sample.ailog" \
   --json > "$OUT_DIR/anchor-result.json"
 
 echo "[3/6] Export artifact, anchor, and LocalChain proof"
-PYTHONPATH="$AILOG_REPO" python - "$OUT_DIR" "$PORT" <<'PY'
+PYTHONPATH="$AILOG_REPO" python -m ailog.cli export-anchor-artifact "$OUT_DIR/sample.ailog" \
+  --interaction example-1 \
+  --artifact-out "$OUT_DIR/artifact.json" \
+  --anchor-out "$OUT_DIR/anchor.json" \
+  > "$OUT_DIR/export-anchor-artifact.log"
+
+python - "$OUT_DIR" "$PORT" <<'PY'
 import json
 import sys
 import urllib.request
 from pathlib import Path
 
-from ailog.core.models import AILogFile
-from ailog.bridge.localchain import _interaction_record
-
 out = Path(sys.argv[1])
 port = sys.argv[2]
-ailog = AILogFile.from_json((out / 'sample.ailog').read_text(encoding='utf-8'))
-interaction = ailog.interactions[0]
-record = _interaction_record(interaction, ailog.ailog_version)
-anchor = interaction.custom['localchain_anchor']
-
-(out / 'artifact.json').write_text(
-    json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(',', ':')),
-    encoding='utf-8',
-)
-(out / 'anchor.json').write_text(json.dumps(anchor, ensure_ascii=False, indent=2), encoding='utf-8')
-
+anchor = json.loads((out / 'anchor.json').read_text(encoding='utf-8'))
 url = f"http://127.0.0.1:{port}/api/chain/proof/{anchor['block_index']}/{anchor['leaf_index']}"
 proof = json.loads(urllib.request.urlopen(url, timeout=5).read().decode('utf-8'))
 (out / 'proof.json').write_text(json.dumps(proof, ensure_ascii=False, indent=2), encoding='utf-8')

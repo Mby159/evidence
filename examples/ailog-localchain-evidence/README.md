@@ -65,8 +65,8 @@ OUT_DIR=/path/to/out ./examples/ailog-localchain-evidence/run.sh
 ```text
 sample.ailog            minimal AILog file created by the example
 anchor-result.json      output of `ailog anchor --json`
-artifact.json           canonical record handed to Evidence
-anchor.json             LocalChain anchor metadata from AILog
+artifact.json           canonical record handed to Evidence (via `ailog export-anchor-artifact`)
+anchor.json             LocalChain anchor metadata from AILog (via `ailog export-anchor-artifact`)
 proof.json              LocalChain Merkle proof
 bundle.json             Evidence proof bundle
 verify-clean.json       expected ok=true verification result
