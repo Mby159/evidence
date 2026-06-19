@@ -63,12 +63,17 @@ npm run test:merkle
 npm run test:metadata
 npm run test:integration
 npm run test:bundle    # proof-bundle (cold path)
+npm run test:example   # AILog -> LocalChain -> Evidence example kit (requires sibling repos)
 npm run test:mvp
 ```
 
 `test:bundle` will additionally exercise an end-to-end proof-bundle round trip
 against a real LocalChain Node server when `LOCAL_CHAIN_REPO` is set or a
 sibling `../local-chain` checkout exists; otherwise it skips that one section.
+
+`test:example` runs the full example kit and requires sibling `ailog` and
+`local-chain` checkouts by default. You can override with `AILOG_REPO` and
+`LOCAL_CHAIN_REPO`.
 
 ## Proof bundle (cold path: AILog + LocalChain -> Evidence)
 
